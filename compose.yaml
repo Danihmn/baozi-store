@@ -1,0 +1,46 @@
+# Sobe o MySQL e a API sem precisar instalar Java, Maven ou MySQL na máquina.
+# As senhas padrão servem apenas para desenvolvimento local.
+name: baozi-store
+
+services:
+  db:
+    image: mysql:8.4
+    container_name: baozi-store-db
+    environment:
+      MYSQL_DATABASE: baozistore
+      MYSQL_USER: ${DB_USER:-baozi}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-baozi123}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root123}
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysqladmin ping -h 127.0.0.1 -u $$MYSQL_USER --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  app:
+    image: maven:3.9-eclipse-temurin-21
+    container_name: baozi-store-app
+    working_dir: /app
+    command: mvn -B spring-boot:run
+    environment:
+      DB_URL: jdbc:mysql://db:3306/baozistore
+      DB_USER: ${DB_USER:-baozi}
+      DB_PASSWORD: ${DB_PASSWORD:-baozi123}
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - .:/app
+      - maven-cache:/root/.m2
+      - target:/app/target
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  mysql-data:
+  maven-cache:
+  target:
